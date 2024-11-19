@@ -1,0 +1,135 @@
+﻿@page "/"
+@using Blazor.Extensions
+@using Blazor.Extensions.Canvas
+
+<PageTitle>Home</PageTitle>
+<h1>DrawArea</h1>
+<div class="drawArea" @onmousedown="MouseDown" @onmouseup="MouseUp" @onmousemove="MouseMove" style="@($"width: {CanvasWidth}px;height:{CanvasHeight}px")">
+    <BECanvas Width="@CanvasWidth" Height="@CanvasHeight" @ref="_canvasReference"></BECanvas>
+</div>
+
+<input type="button" @onclick="PointMode" value="点" />
+<input type="button" @onclick="LineMode" value="線" />
+
+@code{
+    protected BECanvas _canvasReference = default!;
+    int CanvasWidth { get; } = 400;
+    int CanvasHeight { get; } = 400;
+
+    enum DrawMode
+    {
+        Point,
+        Line
+    }
+
+    DrawMode drawMode = DrawMode.Point;
+
+    void PointMode()
+    {
+        drawMode = DrawMode.Point;
+    }
+    void LineMode()
+    {
+        drawMode = DrawMode.Line;
+    }
+
+
+    async Task MouseDown(MouseEventArgs e)
+    {
+        Console.WriteLine($"MouseDown: {e.OffsetX}, {e.OffsetY}");
+        switch (drawMode)
+        {
+            case DrawMode.Point:
+                await DrawPoint(e.OffsetX, e.OffsetY);
+                break;
+            case DrawMode.Line:
+                lineData.x1 = e.OffsetX;
+                lineData.y1 = e.OffsetY;
+                lineData.x2 = e.OffsetX;
+                lineData.y2 = e.OffsetY;
+                lineData.IsDragging = true;
+                await DrawLine(lineData);
+                break;
+        }
+    }
+
+    async Task MouseUp(MouseEventArgs e)
+    {
+        Console.WriteLine($"MouseUp: {e.OffsetX}, {e.OffsetY}");
+        switch (drawMode)
+        {
+            case DrawMode.Line:
+                lineData.x2 = e.OffsetX;
+                lineData.y2 = e.OffsetY;
+                await DrawLine(lineData);
+                lineData.IsDragging = false;
+                break;
+        }
+    }
+    async Task MouseMove(MouseEventArgs e)
+    {
+        Console.WriteLine($"MouseMove: {e.OffsetX}, {e.OffsetY}");
+        if (lineData.IsDragging == false)
+        {
+            return;
+        }
+
+        switch (drawMode)
+        {
+            case DrawMode.Line:
+                lineData.x2 = e.OffsetX;
+                lineData.y2 = e.OffsetY;
+                await DrawLine(lineData);
+                break;
+        }
+    }
+
+    LineData lineData = new LineData();
+
+    async Task DrawLine(LineData lineData)
+    {
+        var context = await _canvasReference.CreateCanvas2DAsync();
+
+        await context.BeginBatchAsync(); // begin the explicit batch
+
+        await context.ClearRectAsync(0, 0, CanvasWidth, CanvasHeight);
+
+        await context.SaveAsync();
+
+        await context.SetStrokeStyleAsync("blue");
+        await context.SetLineWidthAsync(2f);
+
+        await context.BeginPathAsync();
+        await context.MoveToAsync(lineData.x1, lineData.y1);
+        await context.LineToAsync(lineData.x2, lineData.y2);
+        await context.StrokeAsync();
+
+        await context.RestoreAsync();
+
+        await context.EndBatchAsync();
+
+    }
+
+    async Task DrawPoint(double x, double y)
+    {
+        var context = await _canvasReference.CreateCanvas2DAsync();
+
+        await context.BeginBatchAsync(); // begin the explicit batch
+
+        await context.ClearRectAsync(0, 0, CanvasWidth, CanvasHeight);
+
+        await context.SaveAsync();
+
+        await context.SetFillStyleAsync("red");
+
+        int x1 = (int)x;
+        int y1 = (int)y;
+
+        await context.FillRectAsync(x1, y1, 10, 10);
+        await context.RestoreAsync();
+
+        await context.EndBatchAsync();
+
+    }
+
+}
