@@ -1,0 +1,38 @@
+name: github pages
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout the code
+      - uses: actions/checkout@v4
+
+      # Install .NET SDK
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Install .NET WebAssembly Tools
+        run: dotnet workload install wasm-tools
+
+      # Add the PublishSPAforGitHubPages.Build Package
+      - name: Add PublishSPAforGitHubPages.Build Package
+        run: dotnet add ./BlazorDraw/BlazorDraw.csproj package PublishSPAforGitHubPages.Build
+
+      # Publish the site
+      - name: Publish
+        run: dotnet publish BlazorDraw/BlazorDraw.csproj -c Release -o public -p GHPages=true
+
+      # Deploy the site
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: public/wwwroot
+          force_orphan: true
